@@ -173,7 +173,7 @@
         .count-1 .course-card { height: 100%; }
         .count-1 .title { font-size: 4.2rem !important; }
         .count-1 .info-row { font-size: 1.6rem !important; }
-        .count-1 .room-info { min-height: 120px !important; }
+        .count-1 .room-info { min-height: 110px !important; }
         .count-1 .room-info p { font-size: 3.5rem !important; }
         .count-1 .direction-arrow { font-size: 10rem !important; }
 
@@ -394,34 +394,43 @@
         return `${month}월 ${day}일(${dayOfWeek})`;
     }
 
-    // 시간 포맷 변환 로직 ('09시 - 18시' 형식)
+    // 시간 포맷 변환 로직 ('09:00 - 18:00' 형식)
     function formatToCustomTime(startTimeCell, endTimeCell) {
         if (!startTimeCell || !endTimeCell) return '-';
 
-        const extractHour = (cell) => {
+        const extractTime = (cell) => {
             if (!cell) return '';
-            if (cell.f && String(cell.f).includes(':')) {
-                return String(cell.f).substring(0, 2);
+
+            // 1. timeofday 배열 형태 [시, 분, 초, 밀리초] 확인
+            if (Array.isArray(cell.v) && cell.v.length >= 2) {
+                const h = String(cell.v[0]).padStart(2, '0');
+                const m = String(cell.v[1]).padStart(2, '0');
+                return `${h}:${m}`;
             }
-            if (cell.v) {
-                const vStr = String(cell.v);
-                if (vStr.includes(':')) return vStr.substring(0, 2);
-                if (vStr.length >= 4) return vStr.substring(0, 2);
+
+            // 2. 문자열 내에 콜론(:)이 포함된 경우 추출 (예: "09:00", "오전 9:00")
+            const strVal = cell.f ? String(cell.f) : (cell.v ? String(cell.v) : '');
+            const match = strVal.match(/(\d{1,2}):(\d{2})/);
+            if (match) {
+                const h = String(match[1]).padStart(2, '0');
+                const m = match[2];
+                return `${h}:${m}`;
             }
+            
+            // 3. 콜론 없이 숫자만 4자리인 경우 (예: "0900", "1700")
+            const numStr = String(cell.v || cell.f || '').replace(/[^0-9]/g, '');
+            if (numStr.length >= 4) {
+                return `${numStr.substring(0,2)}:${numStr.substring(2,4)}`;
+            }
+
             return '';
         };
 
-        const sHour = extractHour(startTimeCell);
-        const eHour = extractHour(endTimeCell);
+        const sTime = extractTime(startTimeCell);
+        const eTime = extractTime(endTimeCell);
 
-        if (sHour && eHour) {
-            return `${parseInt(sHour, 10)}시 - ${parseInt(eHour, 10)}시`;
-        }
-        
-        const sVal = startTimeCell.f || startTimeCell.v || '';
-        const eVal = endTimeCell.f || endTimeCell.v || '';
-        if (sVal && eVal) {
-            return `${String(sVal).substring(0,2)}시 - ${String(eVal).substring(0,2)}시`;
+        if (sTime && eTime) {
+            return `${sTime} - ${eTime}`;
         }
 
         return '-';
